@@ -1,0 +1,149 @@
+---
+title: "A Direct Approach to ICA(I)"
+author: "Zongchao Liu"
+date: "10/25/2020"
+output: beamer_presentation
+fontsize: 10pt
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+
+
+## A Direct Approach to ICA
+
+Product Density ICA
+
+ - R package: ProDenICA
+
+By definition, indepent components have a joint product density:
+
+$$
+f_S(s) = \prod_{p}^{j=1}f_j(s_j)
+$$
+
+In the next slides, we present an approach that estimates this density directly using generalized additive models.
+
+## A Direct Approach to ICA
+
+In the spirit of representing departures from Gaussianity, we represent each $f_j$ as
+
+$$
+f_j(s_j) = \phi(s_j)e^{g_j(s_j)}
+$$
+
+a tilted Gaussian density.
+
+- $\phi$: standard Gaussian density
+
+- $g_j$ satisfies the normalization conditions required of a density
+
+
+## A Direct Approach to ICA
+
+Assuming $X$ is pre-whitened, the log-likelihood for the observed data $\mathbf{X} = \mathbf{AS}$ is:
+
+$$
+\ell\left(\mathbf{A},\left\{g_{j}\right\}_{1}^{p} ; \mathbf{X}\right)=\sum_{i=1}^{N} \sum_{j=1}^{p}\left[\log \phi_{j}\left(a_{j}^{T} x_{i}\right)+g_{j}\left(a_{j}^{T} x_{i}\right)\right]
+$$
+
+We wish to maximize the likelihood to the constraints that:
+
+- $\mathbf{A}$ is orthogonal
+
+- $g_j$ results in densities $f_j(s_j) = \phi(s_j)e^{g_j(s_j)}$. 
+
+
+## A Direct Approach to ICA
+
+Without imposing any further restrictions on $g_j$, the model is over-parametrized. Therefore, we would instead maximize a regularized version:
+
+$$
+\ell\left(\mathbf{A},\left\{g_{j}\right\}_{1}^{p} ; \mathbf{X}\right)=\sum_{i=1}^{N} \sum_{j=1}^{p}\left[\log \phi_{j}\left(a_{j}^{T} x_{i}\right)+g_{j}\left(a_{j}^{T} x_{i}\right)\right]
+$$
+
+$$
+\sum_{j=1}^{p}\left[\frac{1}{N} \sum_{i=1}^{N}\left[\log \phi\left(a_{j}^{T} x_{i}\right)+g_{j}\left(a_{j}^{T} x_{i}\right)\right]-\int \phi(t) e^{g_{j}(t)} d t-\lambda_{j} \int\left\{g_{j}^{\prime \prime \prime}(t)\right\}^{2}(t) d t\right]
+$$
+
+
+## A Direct Approach to ICA
+
+$$
+\sum_{j=1}^{p}\left[\frac{1}{N} \sum_{i=1}^{N}\left[\log \phi\left(a_{j}^{T} x_{i}\right)+g_{j}\left(a_{j}^{T} x_{i}\right)\right]-\int \phi(t) e^{g_{j}(t)} d t-\lambda_{j} \int\left\{g_{j}^{\prime \prime \prime}(t)\right\}^{2}(t) d t\right]
+$$
+
+- $\int \phi(t) e^{g_{j}(t)} d t$: enforces the density constraint $\int \phi(t) e^{g_{j}(t)} d t = 1$ on any solution $\hat g_j$
+
+- $\lambda_{j} \int\left\{g_{j}^{\prime \prime \prime}(t)\right\}^{2}(t) d t$: a roughness penalty, which guarantees that the solution $\hat g_j$ is a quartic-spline with knots at the observed values of $s_{ij} = a_{j}^{T}x_i$
+
+
+
+
+## A Direct Approach to ICA
+
+$$
+\sum_{j=1}^{p}\left[\frac{1}{N} \sum_{i=1}^{N}\left[\log \phi\left(a_{j}^{T} x_{i}\right)+g_{j}\left(a_{j}^{T} x_{i}\right)\right]-\int \phi(t) e^{g_{j}(t)} d t-\lambda_{j} \int\left\{g_{j}^{\prime \prime \prime}(t)\right\}^{2}(t) d t\right]
+$$
+
+- It can be shown that the solution densities $\hat f_j = \phi e^{\hat g_j}$ each have mean zero and variance one. 
+
+
+
+
+As we increase $\lambda_j$, the solutions approach the standard Gaussian $\phi$
+
+## Steps for the Product Density ICA Algorithm
+
+- ProDenICA
+
+$$
+\sum_{j=1}^{p}\left[\frac{1}{N} \sum_{i=1}^{N}\left[\log \phi\left(a_{j}^{T} x_{i}\right)+g_{j}\left(a_{j}^{T} x_{i}\right)\right]-\int \phi(t) e^{g_{j}(t)} d t-\lambda_{j} \int\left\{g_{j}^{\prime \prime \prime}(t)\right\}^{2}(t) d t\right]
+$$
+
+We fit the functions $g_j$ and directions $a_j$ by optimizing the objective function in an alternating fashion, as described in the following:
+
+1. Initialize $\mathbf{A}$(random Gaussian matrix followed by orthogonalization).
+
+2. Alternate until convergence of $\mathbf{A}$:
+
+   (a) Given $\mathbf{A}$, optimize the objective function w.r.t. $g_j$(separately for each j)
+   
+   (b) Given $g_j$, $j=1,...p$, perform one step of a fixed point algorithm towards finding the optimal $A$
+
+
+## Steps for the Product Density ICA Algorithm
+
+- Step 2(a) amounts to a semi-parametric density estimation, which can be solved using a novel application of generalized additive models.
+
+- For convenience, we extract one of the p separate problems:
+
+$$
+\frac{1}{N} \sum_{i=1}^{N}\left[\log \phi\left(s_{i}\right)+g\left(s_{i}\right)\right]-\int \phi(t) e^{g(t)} d t-\lambda \int\left\{g^{\prime \prime \prime}(t)\right\}^{2}(t) d t
+$$
+
+
+## Steps for the Product Density ICA Algorithm
+
+- For approximation, we construct a fine grid of $L$ values $s_{\ell}^{*}$ in increments $\Delta$ covering the observed values $s_i$, and count the number of $s_i$ in the resulting bins:
+
+$$
+y_{\ell}^{*}=\frac{\# s_{i} \in\left(s_{\ell}^{*}-\Delta / 2, s_{\ell}^{*}+\Delta / 2\right)}{N}
+$$
+
+- Typically, we pick L to be 1000, which is more than adequate
+
+
+## Steps for the Product Density ICA Algorithm
+
+We can then approximate the objctive function by:
+
+$$
+\sum_{\ell=1}^{L}\left\{y_{i}^{*}\left[\log \left(\phi\left(s_{\ell}^{*}\right)\right)+g\left(s_{\ell}^{*}\right)\right]-\Delta \phi\left(s_{\ell}^{*}\right) e^{g\left(s_{\ell}^{*}\right)}\right\}-\lambda \int g^{\prime \prime \prime 2}(s) d s
+$$
+
+- can be seen to be proportional to a penalized Poisson log-likelihood with response $y_{\ell}^*/\Delta$ and penalty parameter $\lambda/\Delta$, and mean $\mu(s) = \phi(s)e^{g(s)}$
+- a generalized additive spline model with an offset term $log\phi(s)$ (Hastie and Tibshirani, 1990; Efron and Tibshirani, 1996)
+- can be fit using a Newton algorithm
